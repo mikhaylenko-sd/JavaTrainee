@@ -6,4 +6,5 @@ import ru.digitalchief.javatrainee.entity.Driver;
 
 @Repository
 public interface DriverRepository extends JpaRepository<Driver, Integer> {
+    Driver findDriverByCarNumber(String carNumber);
 }

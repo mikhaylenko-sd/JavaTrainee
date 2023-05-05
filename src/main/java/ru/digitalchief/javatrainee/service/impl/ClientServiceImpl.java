@@ -4,6 +4,7 @@ import org.springframework.stereotype.Service;
 import ru.digitalchief.javatrainee.dto.ClientDto;
 import ru.digitalchief.javatrainee.entity.Client;
 import ru.digitalchief.javatrainee.exception.NotFoundException;
+import ru.digitalchief.javatrainee.exception.ValidationException;
 import ru.digitalchief.javatrainee.mapper.ClientMapper;
 import ru.digitalchief.javatrainee.repository.ClientRepository;
 import ru.digitalchief.javatrainee.service.ClientService;
@@ -29,13 +30,17 @@ public class ClientServiceImpl implements ClientService {
     @Override
     public ClientDto create(ClientDto clientDto) {
         Client client = ClientMapper.toClient(clientDto);
+        validateEmailUnique(client.getEmail(), null);
+        validatePhoneNumberUnique(client.getPhoneNumber(), client.getId());
         return ClientMapper.toClientDto(clientRepository.save(client));
     }
 
     @Override
     public ClientDto update(ClientDto clientDto) {
-        merge(findById(clientDto.getId()), ClientMapper.toClient(clientDto));
-        return ClientMapper.toClientDto(clientRepository.save(ClientMapper.toClient(clientDto)));
+        Client result = merge(findById(clientDto.getId()), ClientMapper.toClient(clientDto));
+        validateEmailUnique(result.getEmail(), result.getId());
+        validatePhoneNumberUnique(result.getPhoneNumber(), result.getId());
+        return ClientMapper.toClientDto(clientRepository.save(result));
     }
 
     @Override
@@ -54,27 +59,30 @@ public class ClientServiceImpl implements ClientService {
                 .orElseThrow(() -> new NotFoundException("Клиента с id = " + clientId + " не существует."));
     }
 
-    private void merge(Client oldClient, Client newClient) {
-        String name = newClient.getName();
-        String middleName = newClient.getMiddleName();
-        String surname = newClient.getSurname();
-        String email = newClient.getEmail();
-        String phoneNumber = newClient.getPhoneNumber();
+    private Client merge(Client oldClient, Client newClient) {
+        Client result = new Client();
+        result.setId(oldClient.getId());
 
-        if (name != null) {
-            oldClient.setName(name);
+        result.setName(newClient.getName() != null ? newClient.getName() : oldClient.getName());
+        result.setSurname(newClient.getSurname() != null ? newClient.getSurname() : oldClient.getSurname());
+        result.setMiddleName(newClient.getMiddleName() != null ? newClient.getMiddleName() : oldClient.getMiddleName());
+        result.setPhoneNumber(newClient.getPhoneNumber() != null ? newClient.getPhoneNumber() : oldClient.getPhoneNumber());
+        result.setEmail(newClient.getEmail() != null ? newClient.getEmail() : oldClient.getEmail());
+
+        return result;
+    }
+
+    private void validateEmailUnique(String email, Integer id) {
+        Client client = clientRepository.findClientByEmail(email);
+        if (client != null && !client.getId().equals(id)) {
+            throw new ValidationException("Пользователь с таким email уже существует.");
         }
-        if (middleName != null) {
-            oldClient.setMiddleName(middleName);
-        }
-        if (surname != null) {
-            oldClient.setSurname(surname);
-        }
-        if (email != null && !oldClient.getEmail().equals(email)) {
-            oldClient.setEmail(email);
-        }
-        if (phoneNumber != null && !oldClient.getPhoneNumber().equals(phoneNumber)) {
-            oldClient.setPhoneNumber(phoneNumber);
+    }
+
+    private void validatePhoneNumberUnique(String phoneNumber, Integer id) {
+        Client client = clientRepository.findClientByPhoneNumber(phoneNumber);
+        if (client != null && !client.getId().equals(id)) {
+            throw new ValidationException("Пользователь с таким номером телефона уже существует.");
         }
     }
 }

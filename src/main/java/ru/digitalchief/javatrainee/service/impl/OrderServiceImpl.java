@@ -39,6 +39,8 @@ public class OrderServiceImpl implements OrderService {
     @Override
     public OrderDto create(OrderDto orderDto) {
         Order order = OrderMapper.toOrder(orderDto);
+        clientService.getById(orderDto.getClientId());
+        driverService.getById(orderDto.getDriverId());
         order.setStartDate(LocalDateTime.now());
         return OrderMapper.toOrderDto(orderRepository.save(order));
     }
@@ -53,10 +55,10 @@ public class OrderServiceImpl implements OrderService {
 
     @Override
     public OrderDto update(OrderDto orderDto) {
-        Order order = findById(orderDto.getId());
-        clientService.getById(orderDto.getClientId());
-        driverService.getById(orderDto.getDriverId());
-        return OrderMapper.toOrderDto(orderRepository.save(order));
+        Order result = merge(findById(orderDto.getId()), OrderMapper.toOrder(orderDto));
+        clientService.getById(result.getClientId());
+        driverService.getById(result.getDriverId());
+        return OrderMapper.toOrderDto(orderRepository.save(result));
     }
 
     @Override
@@ -73,5 +75,19 @@ public class OrderServiceImpl implements OrderService {
     private Order findById(int orderId) {
         return orderRepository.findById(orderId)
                 .orElseThrow(() -> new NotFoundException("Заказа с id = " + orderId + " не существует."));
+    }
+
+    private Order merge(Order oldOrder, Order newOrder) {
+        Order result = new Order();
+        result.setId(oldOrder.getId());
+        result.setStartDate(oldOrder.getStartDate());
+        result.setEndDate(oldOrder.getEndDate());
+
+        result.setDriverId(newOrder.getDriverId() != null ? newOrder.getDriverId() : oldOrder.getDriverId());
+        result.setClientId(newOrder.getClientId() != null ? newOrder.getClientId() : oldOrder.getClientId());
+        result.setPaymentMethod(newOrder.getPaymentMethod() != null ? newOrder.getPaymentMethod() : oldOrder.getPaymentMethod());
+        result.setPrice(newOrder.getPrice() != null ? newOrder.getPrice() : oldOrder.getPrice());
+
+        return result;
     }
 }
