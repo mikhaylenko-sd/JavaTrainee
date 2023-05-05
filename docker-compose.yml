@@ -1,0 +1,21 @@
+version: '3.8'
+services:
+  server:
+    build: .
+    ports:
+      - "8080:8080"
+    depends_on:
+      - db
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://db:5432/javatrainee
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=iamroot
+
+  db:
+    image: postgres:13.7-alpine
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_DB=javatrainee
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=iamroot
